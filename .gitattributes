@@ -1,0 +1,7 @@
+# Keep line endings LF in the repo — this project is authored on Windows now and
+# built on macOS. Prevents CRLF creeping into Swift sources.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ttf binary
+*.otf binary
