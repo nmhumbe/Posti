@@ -1,19 +1,27 @@
-# Xcode / generated project
-*.xcodeproj
-*.xcworkspace
-!default.xcworkspace
-xcuserdata/
-DerivedData/
-build/
-*.xcuserstate
+# dependencies
+node_modules/
+.pnp
+.pnp.js
 
-# Swift Package Manager
-.build/
-.swiftpm/
+# build output
+dist/
+dist-ssr/
+*.local
 
-# macOS
+# vite / test caches
+.vite/
+coverage/
+*.tsbuildinfo
+
+# env
+.env
+.env.*
+!.env.example
+
+# editor / os
 .DS_Store
-
-# Fastlane / misc
-*.mobileprovision
-*.p12
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
+npm-debug.log*

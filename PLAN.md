@@ -1,13 +1,29 @@
 # Travel Journal — Implementation Plan
 
-A personal iOS travel journal, architected so it can scale to a multi-user product later
-without a rewrite.
+A personal travel journal, built as an installable web app (PWA) now — the user has no Mac —
+and architected so the same core ports to a native iOS app (Expo / React Native) later.
 
-**Status:** planning + scaffold. Design system locked (see §6). App code not yet building (needs macOS/Xcode).
-**Sync decision:** start with **SwiftData + CloudKit private database** (free, automatic
-multi-device for one iCloud account). Move to a real backend only if/when other people use it.
+**Status:** Phase 0 scaffold **built and passing** (`npm run build` + `tsc` green). The world
+map renders real geometry; other tabs are styled with honest stubs.
+
+**Platform decision (2026-08-30):** no Mac available for the foreseeable future, so the
+SwiftUI/Xcode path was dropped. Building as **React + Vite PWA**, installable to the iPhone
+home screen from Safari. The app is split so a future native rewrite is UI-only:
+
+- `src/core/` — plain TypeScript: models, local DB, services (distance, stats, geo/projection),
+  the future Supabase adapter. **Ports to Expo/React Native unchanged.**
+- `src/ui/` — React DOM components + screens. The only layer rewritten for native.
+
+If a Mac appears later: `npx create-expo-app`, copy `src/core/` in, rebuild `src/ui/` with
+React Native primitives, swap Dexie for op-sqlite/WatermelonDB. Data layer, types, design
+tokens, and the whole architecture carry over.
+
+**Sync:** local-first via **IndexedDB (Dexie)** now — offline, no account. **Supabase**
+(Postgres + Auth + Storage + Row-Level Security) behind the same repo functions when other
+people use it. Every row already carries `ownerId` + `createdAt/updatedAt` + soft delete.
+
 **Design source:** Claude Design project "Travel Journal App Design", file `Travel Journal.dc.html`
-(saved under `design/`). The prototype defines **five** tabs, not four — it adds a **Me** tab.
+(saved under `design/`). The prototype defines **five** tabs — Map, Trips, Passport, Miles, Me.
 
 ---
 
@@ -32,50 +48,56 @@ mood chips, a "Fill in the map" toggle, Save. Saving shows a toast and drops you
 
 | Concern | Choice | Notes |
 |---|---|---|
-| UI | SwiftUI, iOS 18+ | All five tabs are comfortably in scope. |
-| Local store | **SwiftData** | `@Model` types, `@Query` in views, external storage for photos. |
-| Sync (now) | **SwiftData + CloudKit** private DB | `ModelConfiguration(..., cloudKitDatabase: .private)`. Zero backend code. |
-| Sync (later, multi-user) | **Supabase** (Postgres + Auth + Storage + RLS) | Relational data suits stats; PostGIS for geo; one service covers the "user database", photo storage, and auth. |
-| World map | Bundled **world-atlas `countries-110m`** TopoJSON (same file the prototype fetches), rendered in a SwiftUI `Canvas` | Full control of the fill aesthetic; fully offline. Prototype uses d3 `geoNaturalEarth1` — port that projection to Swift (§6). |
-| Airports / distance | Bundled **OpenFlights** airport table (public domain) + haversine | ~7,700 airports with lat/long. No network. |
-| Geocoding | `MKLocalSearch` / `CLGeocoder` | City name → coordinates + ISO country code. |
-| Reference data | Bundled read-only files | `countries.geojson`, `iso_continent.json`, `airports.sqlite`. Never synced. |
+| App shell | **React 18 + Vite 6 + TypeScript**, `vite-plugin-pwa` | Installable, offline, auto-updating service worker. `react-router-dom` for tabs + detail routes. |
+| Local store | **Dexie (IndexedDB)** + `dexie-react-hooks` `useLiveQuery` | The `@Query`-style live binding; photo bytes in a separate blob store, rows hold the key. |
+| Sync (later, multi-user) | **Supabase** (Postgres + Auth + Storage + RLS) | Behind the same `src/core` repo functions; sync loop keyed on `updatedAt`. Relational data suits the stats; PostGIS available for geo. |
+| World map | **world-atlas `countries-110m`** TopoJSON (npm) + **`d3-geo` `geoNaturalEarth1`** + `topojson-client`, rendered as SVG `<path>`s | Exactly the prototype's approach — ported, not reimplemented. Bundled (~38 KB gzip), cached hard by the service worker. |
+| Airports / distance | **OpenFlights** airport table (public domain, to bundle) + haversine (`src/core/services/distance.ts`, done) | ~7,700 airports with lat/long. No network. |
+| Geocoding | Nominatim (OpenStreetMap) or MapTiler/Mapbox geocoding API | City name → coords + ISO country. Nominatim is free (usage policy: cache results, 1 req/s). |
+| Fonts | `@fontsource/caprasimo`, `@fontsource/figtree` | Self-hosted (offline), no Google Fonts request. |
+| Country/continent table | `src/core/data/countries.ts` | **Partial** (~90 rows) — complete to all 193 UN members in Phase 2. |
 
 ---
 
 ## 3. Architecture
 
 ```
-Views (SwiftUI)                 one folder per tab + Shared/
-  │   @Observable view models   (editing state, computed stats)
-Repositories (protocols)        views depend on these, not on storage
-  │   LocalRepository            SwiftData            [now]
-  │   RemoteRepository           Supabase             [later]
-Services
-      GeocodingService · DistanceCalculator · StatsService
-      AirportDirectory · MapProjection · CountryGeometryStore
-      (later) AuthService · SyncEngine
-Models (SwiftData @Model)
-Reference data (bundled, read-only)
+src/ui/          React DOM — rewritten for native later
+  App.tsx                    router + bottom tab bar
+  components.tsx             Screen, Card, StatTile, Tag, buttons, ComingSoon
+  screens/                   MapScreen, TripsScreen, PassportScreen, MilesScreen, MeScreen
+
+src/core/        plain TS — ports to Expo unchanged
+  models.ts                  entity types (Owned, Trip, JournalEntry, Photo, DayNote, Flight, …)
+  identity.ts                ownerId seam, newId()
+  db.ts                      Dexie schema + photo blob store + seedProfile()
+  dev.ts                     sample data / reset (dev only)
+  data/countries.ts          numeric-ISO ↔ A3 ↔ name/continent (partial)
+  services/
+    distance.ts              haversine  ✓
+    stats.ts                 computeWorldStats — the map fill set + stat strip  ✓
+    geo.ts                   world-atlas load + geoNaturalEarth1 projection  ✓
+  repo.ts                    CRUD funcs the UI calls  [Phase 1 — swap point for Supabase]
+  sync.ts, auth.ts           [Phase 6]
+
+src/theme/tokens.css         port of design/organic-styles.css
 ```
 
 ### Rules that keep the door open to multi-user
 
-1. **Every user-owned record carries:** a client-generated `UUID id`, `ownerID`,
-   `createdAt`, `updatedAt`, `deletedAt?` (soft delete). Today `ownerID` is a single
+1. **Every user-owned record carries:** a client-generated string `id`, `ownerId`,
+   `createdAt`, `updatedAt`, `deletedAt?` (soft delete). Today `ownerId` is a single
    local constant; later it is `auth.uid()`. Sync then reduces to
    "send rows where `updatedAt > lastSyncedAt`".
 2. **Reference data is separate from user data.** Countries, continents, airports are
-   identical for everyone — bundle them (or serve from a CDN later). They never sync.
-3. **Photos are references, never blobs.** The image is a file in the app container
-   (SwiftData external storage); the row stores only a filename/URL. Later that URL
-   points at Supabase Storage or a CloudKit asset. Downscale on import; keep the
-   original optionally.
-4. **Design models for CloudKit's constraints from day one:** no unique constraints,
-   every attribute optional or with a default value, relationships have inverses.
-   This avoids a painful migration and is harmless for a future Postgres schema.
-5. **Repositories are protocols.** Views/view models never touch `ModelContext` or a
-   network client directly.
+   identical for everyone — bundled in `src/core/data/`. They never sync.
+3. **Photos are references, never inline.** Bytes go in a separate blob store
+   (`photoBlobs`, keyed by string); the `Photo` row holds only `blobKey`. Later that
+   key becomes a Supabase Storage URL. Downscale on import; keep the original optionally.
+4. **Model shape stays backend-portable:** flat rows, id references instead of nested
+   objects, no store-specific features. Maps cleanly onto a Postgres schema later.
+5. **All persistence goes through `src/core/repo.ts`.** UI never touches Dexie (or a
+   network client) directly — that's the single swap point for Supabase.
 
 ---
 
@@ -285,13 +307,14 @@ Swift port:
 
 | Phase | Deliverable | Status |
 |---|---|---|
-| **0. Scaffold** | XcodeGen `project.yml`, 5-tab `TabView` shell, `ModelContainer` (+ CloudKit entitlement), `Theme.swift` + font bundling, `Views/Shared/` component stubs, `.gitignore` / README. | **done in this repo** (needs macOS to generate + build) |
-| **1. Trips / Journal** | `Trip` / `JournalEntry` / `Photo` / `DayNote` models + repository. Trip list, trip detail with Photos/Notes toggle, Compose sheet, geocoding on create. | models written; UI stubbed |
-| **2. Map + stats** | Bundle `countries-110m.json`, TopoJSON decode, Natural Earth I projection, `Canvas` renderer, pan/zoom, tap-to-select, `StatsService`, stat tiles + region bars + chips. | not started |
-| **3. Miles** | `AirportDirectory` (bundled OpenFlights), flight entry + IATA autocomplete, haversine, hero card + stat tiles + legs list. | not started |
-| **4. Passport** | Procedural `Stamp` / `VisaStamp` / `PassportSpread`, page nav, "next stamp" progress. | not started |
-| **5. Me + personal sync** | `Profile` record, badges, settings; turn on CloudKit on the container, test two devices, add JSON export. | `Profile` model written |
-| **6. Multi-user (only if pursued)** | Supabase project, Sign in with Apple, `profiles` table, RLS (`owner_id = auth.uid()`), `SyncEngine` with `updatedAt` watermarks, photos → Storage, migrate own data up as user #1. | not started |
+| **0. Scaffold** | Vite + React + TS + PWA, 5-tab router shell, `tokens.css` + self-hosted fonts, component vocabulary, Dexie schema, `src/core` models + services (distance, stats, geo), sample-data seed. Real world-map rendering. | **done — build + typecheck green** |
+| **1. Trips / Journal** | `src/core/repo.ts` (CRUD, the Supabase swap point). Compose sheet — place search + geocode (Nominatim), photo picker → blob store + captions, day notes. Trip detail: hero + Photos/Notes toggle. Photo detail route. | not started |
+| **2. Map + stats** | Complete `countries.ts` to 193; pan/zoom + tap-to-open a country sheet; wire `Profile.mapFill`; "By region" bars + visited chips from `stats`. | map renders; interaction + full data pending |
+| **3. Miles** | Bundle OpenFlights `airports.csv`; "Add manually" with IATA autocomplete → haversine → cached `distanceMiles`; resolve IATA→country to fold flights into the map. Legs list is live already. | data model + hero + legs done |
+| **4. Passport** | `Stamp` / `VisaStamp` / `PassportSpread` components, page nav, "next stamp" progress, per-continent motifs. | not started |
+| **5. Me + polish** | Badges grid + earned logic, editable settings, JSON export/import, offline-install polish (real PNG icons, apple-touch-icon). | settings + tags render |
+| **6. Multi-user (only if pursued)** | Supabase project; email/OAuth auth; `profiles` + per-table RLS (`owner_id = auth.uid()`); Supabase adapter behind `repo.ts`; sync loop on `updatedAt`; photos → Storage; migrate local data up as user #1. | not started |
+| **→ Native iOS (if a Mac appears)** | `create-expo-app`; import `src/core/` as-is; rebuild `src/ui/` in RN; Dexie → op-sqlite; ship via EAS Build + TestFlight. | future |
 
 ---
 
@@ -327,46 +350,51 @@ Swift port:
 
 | Risk | Mitigation |
 |---|---|
-| Map projection + tap hit-testing | Use the well-tested Natural Earth dataset + a standard projection; unit-test lat/long → screen mapping. |
-| SwiftData + CloudKit constraints (no unique keys, all-optional attributes) | Design models to satisfy them now; treat it as the baseline. |
-| Photo storage / sync growth | Downscale on import; originals optional; store references not blobs. |
-| Airport data staleness | Minor; refresh the bundled file on app updates. |
+| Map tap hit-testing | Each country is an SVG `<path>` — use native `onClick` per path, or `projection.invert()` + point-in-polygon. The d3 dataset is well-tested. |
+| iOS PWA storage eviction | Safari can clear an *uninstalled* site's data under pressure; installed (home-screen) PWAs on iOS 17+ persist well. Ship JSON export early and prioritise Supabase sync for real data safety. |
+| Photo storage growth | Downscale to ~2000px on import; keep bytes in the blob store, not rows; originals optional. |
+| No auto photo-import by location | Genuinely needs native — accept the gap for the PWA; it's a headline reason to move to Expo later. |
+| Nominatim rate limits | Cache every geocode result on the entry; debounce the search box; 1 req/s. |
 
 ---
 
 ## 10. Repo layout
 
-`.xcodeproj` is **generated** from `project.yml` by [XcodeGen](https://github.com/yonyz/XcodeGen)
-(`brew install xcodegen && xcodegen`) so it never needs to be committed / merged.
-
 ```
-project.yml            XcodeGen spec (target, bundle id, entitlements, deploy target)
-Sources/
-  App/                 TravelJournalApp.swift (@main), Persistence.swift (ModelContainer + CloudKit)
-  Theme/               Theme.swift (colours, type, spacing, radius, shadow), View+Washed.swift
-  Models/              Trip, JournalEntry, Photo, DayNote, Flight, CountryVisit, Profile  (SwiftData @Model)
-  Repositories/        Repository protocols + Local (SwiftData) implementations        [Phase 1+]
-  Services/            Geocoding, DistanceCalculator, StatsService, AirportDirectory,
-                       NaturalEarthProjection, CountryGeometryStore                     [Phase 2+]
-  Views/
-    Root/              RootTabView.swift
-    Map/  Trips/  Passport/  Miles/  Me/   (one screen file each; stubbed)
-    Shared/            Card, StatTile, Kicker, Tag, SegmentedToggle, PrimaryButton,
-                       WashedImage, Toast … (component library)
-  Resources/
-    Assets.xcassets    (app icon, accent colour)
-    Fonts/             Caprasimo-Regular.ttf, Figtree-{Regular,Medium,Bold}.ttf   ← add these
-    Reference/         countries-110m.json, iso_continent.json, airports.csv       ← add these
-Tests/                 unit tests (projection, distance, stats)
-design/                Travel Journal.dc.html, organic-styles.css  (imported reference)
-PLAN.md
+package.json  vite.config.ts  tsconfig.json  index.html
+public/
+  favicon.svg            (SVG mark; add PNG 192/512 + apple-touch-icon.png later)
+src/
+  main.tsx               entry — mounts <App>, imports fonts + tokens, seeds Profile
+  App.tsx                router + bottom tab bar (5 tabs)
+  theme/tokens.css        port of design/organic-styles.css
+  ui/
+    components.tsx         Screen, Card, StatTile, Tag, PillButton, PrimaryButton, ComingSoon
+    screens/              MapScreen, TripsScreen, PassportScreen, MilesScreen, MeScreen
+  core/                   ← plain TS, ports to Expo/RN unchanged
+    identity.ts  models.ts  db.ts  dev.ts
+    data/countries.ts      numeric-ISO ↔ A3 ↔ name/continent (partial ~90 rows)
+    services/distance.ts   services/stats.ts   services/geo.ts
+    repo.ts                [Phase 1]  sync.ts auth.ts  [Phase 6]
+design/                  Travel Journal.dc.html, organic-styles.css  (imported reference)
+PLAN.md  README.md
 ```
 
-### Not in the repo yet (need adding on the Mac side)
+### Not in the repo yet
 
-- **Fonts** — Caprasimo (Google Fonts, OFL), Figtree (Google Fonts, OFL). Drop the TTFs in
-  `Sources/Resources/Fonts/` and list them under `info.UIAppFonts` in `project.yml`.
-- **Reference data** — `countries-110m.json` (world-atlas, npm/CDN), an ISO-numeric → A3 /
-  name / continent map, and `airports.csv` (OpenFlights, public domain).
-- **`TravelJournal.entitlements`** — iCloud + CloudKit container; add when wiring Phase 5
-  (kept out of Phase 0 so the project builds without a paid team / provisioning).
+- **Real icons** — PNG 192×192 / 512×512 + a 180×180 `apple-touch-icon.png` in `public/`
+  for the nicest home-screen install. SVG-only works for dev.
+- **`src/core/data/airports.csv`** — OpenFlights airport table (public domain), Phase 3.
+- **Full `countries.ts`** — extend to all 193 UN members, Phase 2.
+- **`.env`** — `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`, Phase 6.
+
+### Running it
+
+```sh
+npm install
+npm run dev        # opens on localhost + your LAN IP — open that IP on your iPhone
+npm run build && npm run preview   # test the installable PWA
+```
+
+Deploy: push `dist/` to Vercel / Netlify / Cloudflare Pages (all free); then on the iPhone,
+Safari ▸ Share ▸ Add to Home Screen.

@@ -1,50 +1,53 @@
 # Travel Journal
 
-A personal iOS travel journal — world map of visited countries, city-by-city photo +
-notes journal, an aesthetic passport, and a flight-miles tracker. Built local-first with
-SwiftData, architected to scale to multi-user later. See [PLAN.md](PLAN.md) for the full
-plan; [design/](design/) holds the imported Claude Design prototype and tokens.
+A personal travel journal — a world map that fills in as you visit countries, a city-by-city
+photo + notes journal, an aesthetic passport, and a flight-miles tracker.
+
+Built as an installable **web app (PWA)** so it needs no Mac. The code is split so the same
+core ports to a native iOS app (Expo / React Native) later — see [PLAN.md](PLAN.md).
 
 ## Status
 
-Phase 0 scaffold. Models, theme, persistence stack, and the 5-tab shell are in place;
-every tab renders on-token but most content is stubbed (`ComingSoon`) with the phase that
-fills it in. **Not yet built or run** — needs macOS + Xcode.
+Phase 0 scaffold — **`npm run build` and `tsc` pass.** The world map renders real geometry
+(d3 + world-atlas); Trips / Miles / Me are styled and live-bound to the local DB; Passport is
+a stub. Load sample data from the Trips tab to see the map and stats populate.
 
-## Getting started (macOS)
+## Run it
 
 ```sh
-brew install xcodegen
-xcodegen            # generates TravelJournal.xcodeproj from project.yml
-open TravelJournal.xcodeproj
+npm install
+npm run dev
 ```
 
-`.xcodeproj` is generated and git-ignored — re-run `xcodegen` after adding files.
+Vite prints a `localhost` URL and a LAN URL (e.g. `http://192.168.1.x:5173`). Open the LAN
+URL in Safari on your iPhone (same Wi-Fi) to try it on device.
 
-### Before it builds/runs cleanly
+```sh
+npm run build && npm run preview   # test the real installable PWA
+npm run typecheck
+```
 
-- **Fonts** — download Caprasimo and Figtree (Google Fonts, OFL), drop the TTFs in
-  `Sources/Resources/Fonts/`. Until then `Font.custom` falls back to the system font.
-- **Signing** — set your Apple team in Xcode ▸ target ▸ Signing & Capabilities (or
-  `DEVELOPMENT_TEAM` in `project.yml`) to run on a device. The Simulator needs nothing.
-- **Reference data** (Phase 2/3) — `countries-110m.json` (world-atlas), an ISO-numeric →
-  A3/name/continent map, and `airports.csv` (OpenFlights) go in `Sources/Resources/Reference/`.
+**Install to your iPhone:** deploy `dist/` to Vercel / Netlify / Cloudflare Pages (free),
+open the site in Safari, then Share ▸ Add to Home Screen. It then launches fullscreen and
+works offline.
 
 ## Layout
 
 ```
-project.yml            XcodeGen spec
-Sources/
-  App/        entry point, SwiftData container, ownership seam
-  Theme/      Theme.swift (port of design/organic-styles.css), .washed()
-  Models/     Trip, JournalEntry, Photo, DayNote, Flight, CountryVisit, Profile
-  Services/   DistanceCalculator (more land in Phase 2+)
-  Views/      Root/ + Map/ Trips/ Passport/ Miles/ Me/ + Shared/ components
-Tests/        unit tests
-design/       imported prototype + tokens
+src/ui/      React DOM — components + 5 screens. Rewritten for native later.
+src/core/    Plain TypeScript — models, Dexie DB, services. Ports to Expo unchanged.
+src/theme/   tokens.css — port of design/organic-styles.css
+design/      imported Claude Design prototype + tokens
 ```
 
-## Sync
+## Data
 
-Local store only for now. `Persistence.swift` flips to CloudKit (`.automatic`) in Phase 5
-once the iCloud capability is added — the model layer is already CloudKit-safe.
+Local-first via IndexedDB (Dexie). No account, works offline. Multi-user later = a Supabase
+adapter behind `src/core/repo.ts`; every row already carries `ownerId` + timestamps + soft
+delete for sync.
+
+## To add
+
+- Real PNG app icons + `apple-touch-icon.png` in `public/` (SVG works for dev)
+- `src/core/data/airports.csv` (OpenFlights) for the Miles tab
+- Complete `src/core/data/countries.ts` to all 193 UN members
