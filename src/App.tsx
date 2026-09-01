@@ -6,6 +6,7 @@ import { PassportScreen } from "@ui/screens/PassportScreen";
 import { MilesScreen } from "@ui/screens/MilesScreen";
 import { MeScreen } from "@ui/screens/MeScreen";
 import { ComposeScreen } from "@ui/screens/ComposeScreen";
+import { EntryScreen } from "@ui/screens/EntryScreen";
 
 const TABS: Array<{ to: string; label: string; icon: ReactNode }> = [
   { to: "/map", label: "Map", icon: <PinIcon /> },
@@ -15,11 +16,11 @@ const TABS: Array<{ to: string; label: string; icon: ReactNode }> = [
   { to: "/me", label: "Me", icon: <PersonIcon /> },
 ];
 
-const FULLSCREEN_ROUTES = ["/compose"];
+const FULLSCREEN_PREFIXES = ["/compose", "/entry/"];
 
 export function App() {
   const location = useLocation();
-  const hideTabs = FULLSCREEN_ROUTES.includes(location.pathname);
+  const hideTabs = FULLSCREEN_PREFIXES.some((p) => location.pathname.startsWith(p));
 
   return (
     <div
@@ -41,6 +42,7 @@ export function App() {
           <Route path="/miles" element={<MilesScreen />} />
           <Route path="/me" element={<MeScreen />} />
           <Route path="/compose" element={<ComposeScreen />} />
+          <Route path="/entry/:id" element={<EntryScreen />} />
           <Route path="*" element={<Navigate to="/map" replace />} />
         </Routes>
       </main>

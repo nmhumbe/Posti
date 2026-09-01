@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@core/db";
-import { listEntries } from "@core/repo";
+import { listEntries, listPhotos } from "@core/repo";
 import { seedSampleData } from "@core/dev";
+import type { JournalEntry } from "@core/models";
+import { useBlobUrl } from "@ui/hooks";
 import { Screen, Card, Tag, PillButton, Toast } from "@ui/components";
 
 export function TripsScreen() {
@@ -54,37 +56,13 @@ export function TripsScreen() {
         </Card>
       ) : (
         entries.map((e) => (
-          <Card key={e.id} pad={0} style={{ overflow: "hidden" }}>
-            <div
-              className="washed"
-              style={{
-                height: 120,
-                background:
-                  "linear-gradient(135deg, var(--color-accent-300), var(--color-accent-2-300))",
-              }}
-            />
-            <div style={{ padding: "13px 15px 15px" }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "baseline",
-                  justifyContent: "space-between",
-                  gap: 10,
-                }}
-              >
-                <h4>{e.cityName}</h4>
-                <span style={{ fontSize: 11.5, color: "var(--color-neutral-600)" }}>
-                  {fmtRange(e.arrivalDate, e.departureDate)}
-                </span>
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 11 }}>
-                <Tag kind="sage">{e.countryISO || "??"}</Tag>
-                {e.mood && <Tag kind="accent">{e.mood}</Tag>}
-                <Tag>{photoCount(e.id)} photos</Tag>
-                <Tag>{noteCount(e.id)} notes</Tag>
-              </div>
-            </div>
-          </Card>
+          <TripCard
+            key={e.id}
+            entry={e}
+            photos={photoCount(e.id)}
+            notes={noteCount(e.id)}
+            onOpen={() => navigate(`/entry/${e.id}`)}
+          />
         ))
       )}
 
@@ -105,6 +83,60 @@ export function TripsScreen() {
 
       {toast && <Toast message={toast} />}
     </Screen>
+  );
+}
+
+function TripCard({
+  entry,
+  photos,
+  notes,
+  onOpen,
+}: {
+  entry: JournalEntry;
+  photos: number;
+  notes: number;
+  onOpen: () => void;
+}) {
+  const coverPhoto = useLiveQuery(
+    () => listPhotos(entry.id).then((ps) => ps.find((p) => p.id === entry.coverPhotoId) ?? ps[0]),
+    [entry.id, entry.coverPhotoId],
+  );
+  const coverUrl = useBlobUrl(coverPhoto?.blobKey);
+
+  return (
+    <Card pad={0} style={{ overflow: "hidden", cursor: "pointer" }}>
+      <div
+        onClick={onOpen}
+        className="washed"
+        style={{
+          height: 120,
+          background: coverUrl
+            ? `center/cover no-repeat url(${coverUrl})`
+            : "linear-gradient(135deg, var(--color-accent-300), var(--color-accent-2-300))",
+        }}
+      />
+      <div style={{ padding: "13px 15px 15px" }} onClick={onOpen}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
+          <h4>{entry.cityName}</h4>
+          <span style={{ fontSize: 11.5, color: "var(--color-neutral-600)" }}>
+            {fmtRange(entry.arrivalDate, entry.departureDate)}
+          </span>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 11 }}>
+          <Tag kind="sage">{entry.countryISO || "??"}</Tag>
+          {entry.mood && <Tag kind="accent">{entry.mood}</Tag>}
+          <Tag>{photos} photos</Tag>
+          <Tag>{notes} notes</Tag>
+        </div>
+      </div>
+    </Card>
   );
 }
 

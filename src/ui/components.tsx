@@ -246,6 +246,81 @@ export function Chip({
   );
 }
 
+/** Pill-track segmented control (Photos / Notes). */
+export function SegmentedToggle<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly T[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        background: v("color-neutral-200"),
+        borderRadius: v("radius-pill"),
+        padding: 3,
+      }}
+    >
+      {options.map((opt) => {
+        const active = opt === value;
+        return (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onChange(opt)}
+            style={{
+              flex: 1,
+              border: 0,
+              padding: 8,
+              borderRadius: v("radius-pill"),
+              fontSize: 12.5,
+              fontWeight: 600,
+              background: active ? v("color-neutral-100") : "transparent",
+              color: active ? v("color-accent-700") : v("color-neutral-600"),
+            }}
+          >
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Circular icon button — the back chevron on hero screens. */
+export function RoundButton({
+  onClick,
+  children,
+  dark,
+}: {
+  onClick?: () => void;
+  children: ReactNode;
+  dark?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: 38,
+        height: 38,
+        borderRadius: 999,
+        border: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: dark ? "rgba(245,234,216,.9)" : v("color-neutral-200"),
+        color: v("color-text"),
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 /** Brief confirmation pill, slide-up from the bottom. Auto-dismisses. */
 export function Toast({ message }: { message: string }) {
   return (
