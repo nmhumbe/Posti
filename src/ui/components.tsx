@@ -1,4 +1,9 @@
-import type { CSSProperties, ReactNode } from "react";
+import type {
+  CSSProperties,
+  InputHTMLAttributes,
+  ReactNode,
+  TextareaHTMLAttributes,
+} from "react";
 
 /** The component vocabulary from PLAN.md §6, styled to the organic tokens. */
 
@@ -170,6 +175,99 @@ export function PillButton({
     >
       {children}
     </button>
+  );
+}
+
+export function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label style={{ display: "block" }}>
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{label}</div>
+      {children}
+    </label>
+  );
+}
+
+const inputStyle: CSSProperties = {
+  width: "100%",
+  padding: "12px 16px",
+  borderRadius: v("radius-pill"),
+  border: `1px solid ${v("color-divider")}`,
+  background: v("color-neutral-100"),
+  fontSize: 13.5,
+  outline: "none",
+};
+
+export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
+  return <input {...props} style={{ ...inputStyle, ...props.style }} />;
+}
+
+export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...props}
+      style={{
+        ...inputStyle,
+        borderRadius: 22,
+        minHeight: 110,
+        resize: "vertical",
+        fontFamily: v("font-body"),
+        lineHeight: 1.6,
+        ...props.style,
+      }}
+    />
+  );
+}
+
+export function Chip({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string;
+  selected?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        border: 0,
+        padding: "8px 14px",
+        borderRadius: v("radius-pill"),
+        fontSize: 12,
+        fontWeight: 600,
+        background: selected ? v("color-accent") : v("color-neutral-200"),
+        color: selected ? v("color-bg") : v("color-neutral-800"),
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+/** Brief confirmation pill, slide-up from the bottom. Auto-dismisses. */
+export function Toast({ message }: { message: string }) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        left: "50%",
+        bottom: "calc(var(--safe-bottom) + 92px)",
+        transform: "translateX(-50%)",
+        background: v("color-accent-800"),
+        color: v("color-accent-100"),
+        padding: "11px 18px",
+        borderRadius: v("radius-pill"),
+        fontSize: 12.5,
+        fontWeight: 600,
+        boxShadow: v("shadow-lg"),
+        whiteSpace: "nowrap",
+        zIndex: 50,
+      }}
+    >
+      {message}
+    </div>
   );
 }
 

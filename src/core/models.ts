@@ -36,6 +36,7 @@ export interface JournalEntry extends Owned {
   arrivalDate?: number | null;
   departureDate?: number | null;
   coverPhotoId?: string | null;
+  mood?: string | null;
   orderIndex: number;
 }
 

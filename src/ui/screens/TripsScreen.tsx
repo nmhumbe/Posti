@@ -1,13 +1,35 @@
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@core/db";
+import { listEntries } from "@core/repo";
 import { seedSampleData } from "@core/dev";
-import { Screen, Card, Tag, PillButton, PrimaryButton } from "@ui/components";
+import { Screen, Card, Tag, PillButton, Toast } from "@ui/components";
 
 export function TripsScreen() {
-  const entries = useLiveQuery(() => db.entries.orderBy("orderIndex").toArray(), [], []);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const entries = useLiveQuery(listEntries, [], []);
+  const dayNotes = useLiveQuery(() => db.dayNotes.toArray(), [], []);
+  const photos = useLiveQuery(() => db.photos.toArray(), [], []);
+
+  const noteCount = (id: string) => dayNotes.filter((n) => n.entryId === id && !n.deletedAt).length;
+  const photoCount = (id: string) => photos.filter((p) => p.entryId === id && !p.deletedAt).length;
+
+  // toast passed from the Compose screen on save
+  const [toast, setToast] = useState<string | null>(
+    (location.state as { toast?: string } | null)?.toast ?? null,
+  );
+  useEffect(() => {
+    if (!toast) return;
+    window.history.replaceState({}, "");
+    const t = setTimeout(() => setToast(null), 2400);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   return (
-    <Screen title="Trips" trailing={<PillButton>+ New entry</PillButton>}>
+    <Screen title="Trips" trailing={<PillButton onClick={() => navigate("/compose")}>+ New entry</PillButton>}>
       <div
         style={{
           display: "flex",
@@ -26,11 +48,9 @@ export function TripsScreen() {
       {entries.length === 0 ? (
         <Card>
           <div style={{ fontSize: 13, color: "var(--color-neutral-700)", marginBottom: 12 }}>
-            No entries yet. Phase 1 builds the real create flow (place search + geocode,
-            photo album with captions, day notes). For now, load the sample trips from the
-            design prototype to see the map and stats work.
+            No entries yet. Tap <strong>+ New entry</strong> to add a city — search the place,
+            it's geocoded to a country and lights up the map.
           </div>
-          <PrimaryButton onClick={() => seedSampleData()}>Load sample data</PrimaryButton>
         </Card>
       ) : (
         entries.map((e) => (
@@ -57,15 +77,33 @@ export function TripsScreen() {
                   {fmtRange(e.arrivalDate, e.departureDate)}
                 </span>
               </div>
-              <div style={{ display: "flex", gap: 7, marginTop: 11 }}>
-                <Tag kind="sage">{e.countryISO}</Tag>
-                <Tag>0 photos</Tag>
-                <Tag>0 notes</Tag>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 11 }}>
+                <Tag kind="sage">{e.countryISO || "??"}</Tag>
+                {e.mood && <Tag kind="accent">{e.mood}</Tag>}
+                <Tag>{photoCount(e.id)} photos</Tag>
+                <Tag>{noteCount(e.id)} notes</Tag>
               </div>
             </div>
           </Card>
         ))
       )}
+
+      <button
+        onClick={() => seedSampleData()}
+        style={{
+          alignSelf: "flex-start",
+          border: "1px solid var(--color-divider)",
+          background: "transparent",
+          color: "var(--color-neutral-600)",
+          borderRadius: 999,
+          padding: "8px 14px",
+          fontSize: 12,
+        }}
+      >
+        + Load sample data (dev)
+      </button>
+
+      {toast && <Toast message={toast} />}
     </Screen>
   );
 }

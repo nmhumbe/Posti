@@ -1,10 +1,11 @@
-import { NavLink, Route, Routes, Navigate } from "react-router-dom";
+import { NavLink, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { MapScreen } from "@ui/screens/MapScreen";
 import { TripsScreen } from "@ui/screens/TripsScreen";
 import { PassportScreen } from "@ui/screens/PassportScreen";
 import { MilesScreen } from "@ui/screens/MilesScreen";
 import { MeScreen } from "@ui/screens/MeScreen";
+import { ComposeScreen } from "@ui/screens/ComposeScreen";
 
 const TABS: Array<{ to: string; label: string; icon: ReactNode }> = [
   { to: "/map", label: "Map", icon: <PinIcon /> },
@@ -14,7 +15,12 @@ const TABS: Array<{ to: string; label: string; icon: ReactNode }> = [
   { to: "/me", label: "Me", icon: <PersonIcon /> },
 ];
 
+const FULLSCREEN_ROUTES = ["/compose"];
+
 export function App() {
+  const location = useLocation();
+  const hideTabs = FULLSCREEN_ROUTES.includes(location.pathname);
+
   return (
     <div
       style={{
@@ -34,40 +40,43 @@ export function App() {
           <Route path="/passport" element={<PassportScreen />} />
           <Route path="/miles" element={<MilesScreen />} />
           <Route path="/me" element={<MeScreen />} />
+          <Route path="/compose" element={<ComposeScreen />} />
           <Route path="*" element={<Navigate to="/map" replace />} />
         </Routes>
       </main>
 
-      <nav
-        style={{
-          display: "flex",
-          justifyContent: "space-around",
-          alignItems: "center",
-          padding: "9px 6px calc(var(--safe-bottom) + 10px)",
-          background: "var(--color-neutral-100)",
-          borderTop: "1px solid var(--color-divider)",
-        }}
-      >
-        {TABS.map((t) => (
-          <NavLink
-            key={t.to}
-            to={t.to}
-            style={({ isActive }) => ({
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 4,
-              width: 60,
-              fontSize: 10,
-              fontWeight: 600,
-              color: isActive ? "var(--color-accent-700)" : "var(--color-neutral-500)",
-            })}
-          >
-            {t.icon}
-            {t.label}
-          </NavLink>
-        ))}
-      </nav>
+      {!hideTabs && (
+        <nav
+          style={{
+            display: "flex",
+            justifyContent: "space-around",
+            alignItems: "center",
+            padding: "9px 6px calc(var(--safe-bottom) + 10px)",
+            background: "var(--color-neutral-100)",
+            borderTop: "1px solid var(--color-divider)",
+          }}
+        >
+          {TABS.map((t) => (
+            <NavLink
+              key={t.to}
+              to={t.to}
+              style={({ isActive }) => ({
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 4,
+                width: 60,
+                fontSize: 10,
+                fontWeight: 600,
+                color: isActive ? "var(--color-accent-700)" : "var(--color-neutral-500)",
+              })}
+            >
+              {t.icon}
+              {t.label}
+            </NavLink>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }
