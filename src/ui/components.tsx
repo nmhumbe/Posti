@@ -246,6 +246,46 @@ export function Chip({
   );
 }
 
+/** "By region" progress row: label · track · count. */
+export function RegionBar({
+  name,
+  visited,
+  total,
+  pct,
+}: {
+  name: string;
+  visited: number;
+  total: number;
+  pct: number;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+      <div style={{ width: 88, fontSize: 12.5, fontWeight: 600 }}>{name}</div>
+      <div
+        style={{
+          flex: 1,
+          height: 9,
+          borderRadius: 999,
+          background: v("color-neutral-300"),
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            height: "100%",
+            borderRadius: 999,
+            background: v("color-accent"),
+            width: `${Math.round(pct * 100)}%`,
+          }}
+        />
+      </div>
+      <div style={{ width: 44, textAlign: "right", fontSize: 11.5, color: v("color-neutral-700") }}>
+        {visited}/{total}
+      </div>
+    </div>
+  );
+}
+
 /** Pill-track segmented control (Photos / Notes). */
 export function SegmentedToggle<T extends string>({
   options,

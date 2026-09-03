@@ -9,7 +9,7 @@ import {
   numericForISO3,
   type WorldFeature,
 } from "@core/services/geo";
-import { Screen, Card, StatTile } from "@ui/components";
+import { Screen, Card, StatTile, RegionBar } from "@ui/components";
 
 const RATIO = 0.5; // 800 x 400 viewBox, like the prototype
 
@@ -143,34 +143,50 @@ export function MapScreen() {
           </div>
         </Card>
       ) : (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-          {[...stats.visitedISO3].sort().map((iso) => (
-            <span
-              key={iso}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "6px 12px 6px 8px",
-                borderRadius: 999,
-                background: "var(--color-accent-200)",
-                color: "var(--color-accent-800)",
-                fontSize: 12,
-                fontWeight: 600,
-              }}
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+            <div
+              className="kicker"
+              style={{ color: "var(--color-neutral-700)" }}
             >
+              By region
+            </div>
+            {stats.regions
+              .filter((r) => r.visited > 0)
+              .map((r) => (
+                <RegionBar key={r.name} name={r.name} visited={r.visited} total={r.total} pct={r.pct} />
+              ))}
+          </div>
+
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+            {stats.visitedCountries.map((c) => (
               <span
+                key={c.iso3}
                 style={{
-                  width: 7,
-                  height: 7,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 12px 6px 8px",
                   borderRadius: 999,
-                  background: "var(--color-accent)",
+                  background: "var(--color-accent-200)",
+                  color: "var(--color-accent-800)",
+                  fontSize: 12,
+                  fontWeight: 600,
                 }}
-              />
-              {iso}
-            </span>
-          ))}
-        </div>
+              >
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: 999,
+                    background: "var(--color-accent)",
+                  }}
+                />
+                {c.name}
+              </span>
+            ))}
+          </div>
+        </>
       )}
     </Screen>
   );
