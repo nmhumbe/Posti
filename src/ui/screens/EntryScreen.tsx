@@ -9,10 +9,14 @@ import {
   updatePhoto,
   deletePhoto,
   setEntryCover,
+  appendDayNote,
+  updateDayNote,
+  deleteDayNote,
+  moveDayNote,
 } from "@core/repo";
-import type { Photo } from "@core/models";
+import type { Photo, DayNote } from "@core/models";
 import { useBlobUrl } from "@ui/hooks";
-import { SegmentedToggle, RoundButton, ComingSoon } from "@ui/components";
+import { SegmentedToggle, RoundButton } from "@ui/components";
 
 const TABS = ["Photos", "Notes"] as const;
 
@@ -143,23 +147,37 @@ export function EntryScreen() {
           </div>
         ) : (
           <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-            {notes.map((n) => (
-              <div
+            {notes.map((n, i) => (
+              <NoteCard
                 key={n.id}
-                style={{
-                  background: "var(--color-neutral-100)",
-                  borderRadius: 22,
-                  padding: "15px 16px",
-                  boxShadow: "var(--shadow-sm)",
-                }}
-              >
-                <div className="kicker" style={{ color: "var(--color-neutral-600)", marginBottom: 7 }}>
-                  {n.title}
-                </div>
-                <div style={{ fontSize: 13.5, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{n.body}</div>
-              </div>
+                note={n}
+                first={i === 0}
+                last={i === notes.length - 1}
+                onChange={(patch) => updateDayNote(n.id, patch)}
+                onMove={(dir) => moveDayNote(id, n.id, dir)}
+                onDelete={() => deleteDayNote(n.id)}
+              />
             ))}
-            <ComingSoon note="Add / edit / reorder day notes lands in Slice 3. Notes created from the New-entry sheet show here now." />
+            {notes.length === 0 && (
+              <div style={{ fontSize: 13, color: "var(--color-neutral-600)" }}>
+                No notes yet. Add one per day — "Day 1 · arrival", then what happened.
+              </div>
+            )}
+            <button
+              onClick={() => appendDayNote(id)}
+              style={{
+                alignSelf: "flex-start",
+                border: "2.5px dashed var(--color-neutral-400)",
+                background: "transparent",
+                color: "var(--color-neutral-600)",
+                borderRadius: 999,
+                padding: "9px 16px",
+                fontSize: 12.5,
+                fontWeight: 600,
+              }}
+            >
+              + Add note
+            </button>
           </div>
         )}
       </div>
@@ -229,6 +247,92 @@ function PhotoCell({
       />
     </div>
   );
+}
+
+function NoteCard({
+  note,
+  first,
+  last,
+  onChange,
+  onMove,
+  onDelete,
+}: {
+  note: DayNote;
+  first: boolean;
+  last: boolean;
+  onChange: (patch: Partial<DayNote>) => void;
+  onMove: (dir: "up" | "down") => void;
+  onDelete: () => void;
+}) {
+  const [title, setTitle] = useState(note.title);
+  const [body, setBody] = useState(note.body);
+
+  return (
+    <div
+      style={{
+        background: "var(--color-neutral-100)",
+        borderRadius: 22,
+        padding: "13px 15px 15px",
+        boxShadow: "var(--shadow-sm)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span
+          style={{ width: 8, height: 8, borderRadius: 999, background: "var(--color-accent-2)", flex: "none" }}
+        />
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={() => title !== note.title && onChange({ title })}
+          placeholder="Day 1 · arrival"
+          className="kicker"
+          style={{
+            flex: 1,
+            border: 0,
+            background: "transparent",
+            color: "var(--color-neutral-600)",
+            outline: "none",
+          }}
+        />
+        <button onClick={() => onMove("up")} disabled={first} style={noteIconBtn(first)}>↑</button>
+        <button onClick={() => onMove("down")} disabled={last} style={noteIconBtn(last)}>↓</button>
+        <button onClick={onDelete} style={noteIconBtn(false)}>×</button>
+      </div>
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        onBlur={() => body !== note.body && onChange({ body })}
+        placeholder="What happened?"
+        rows={Math.max(3, body.split("\n").length + 1)}
+        style={{
+          width: "100%",
+          marginTop: 8,
+          border: 0,
+          background: "transparent",
+          resize: "none",
+          outline: "none",
+          fontFamily: "var(--font-body)",
+          fontSize: 13.5,
+          lineHeight: 1.6,
+        }}
+      />
+    </div>
+  );
+}
+
+function noteIconBtn(disabled: boolean): CSSProperties {
+  return {
+    width: 24,
+    height: 24,
+    borderRadius: 999,
+    border: 0,
+    background: "var(--color-neutral-200)",
+    color: "var(--color-neutral-700)",
+    fontSize: 13,
+    lineHeight: "24px",
+    padding: 0,
+    opacity: disabled ? 0.35 : 1,
+  };
 }
 
 function Lightbox({ photo, onClose }: { photo: Photo; onClose: () => void }) {

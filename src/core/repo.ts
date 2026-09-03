@@ -171,3 +171,37 @@ export async function addDayNote(
   await db.dayNotes.put(note);
   return note;
 }
+
+/** Appends a blank note, numbered one past the current max day. */
+export async function appendDayNote(entryId: string, title?: string): Promise<DayNote> {
+  const notes = await listDayNotes(entryId);
+  const nextDay = notes.reduce((m, n) => Math.max(m, n.dayNumber), 0) + 1;
+  return addDayNote(entryId, {
+    dayNumber: nextDay,
+    title: title ?? `Day ${nextDay}`,
+    body: "",
+  });
+}
+
+export async function updateDayNote(id: string, patch: Partial<DayNote>): Promise<void> {
+  await db.dayNotes.update(id, { ...patch, updatedAt: Date.now() });
+}
+
+export async function deleteDayNote(id: string): Promise<void> {
+  await db.dayNotes.update(id, { deletedAt: Date.now(), updatedAt: Date.now() });
+}
+
+/** Swaps orderIndex with the adjacent note in the given direction. */
+export async function moveDayNote(
+  entryId: string,
+  id: string,
+  dir: "up" | "down",
+): Promise<void> {
+  const notes = await listDayNotes(entryId);
+  const i = notes.findIndex((n) => n.id === id);
+  const j = dir === "up" ? i - 1 : i + 1;
+  if (i < 0 || j < 0 || j >= notes.length) return;
+  const now = Date.now();
+  await db.dayNotes.update(notes[i].id, { orderIndex: j, updatedAt: now });
+  await db.dayNotes.update(notes[j].id, { orderIndex: i, updatedAt: now });
+}
