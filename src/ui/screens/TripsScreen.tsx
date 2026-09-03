@@ -67,7 +67,12 @@ export function TripsScreen() {
       )}
 
       <button
-        onClick={() => seedSampleData()}
+        onClick={() =>
+          seedSampleData().catch((err) => {
+            console.error(err);
+            alert(`Couldn't load sample data: ${(err as Error).message ?? err}`);
+          })
+        }
         style={{
           alignSelf: "flex-start",
           border: "1px solid var(--color-divider)",

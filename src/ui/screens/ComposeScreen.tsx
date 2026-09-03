@@ -48,28 +48,34 @@ export function ComposeScreen() {
   async function save() {
     if (!place || saving) return;
     setSaving(true);
-    const arrivalMs = dateToMs(arrival);
-    const entry = await createEntry({
-      cityName: place.cityName,
-      countryISO: place.countryISO3,
-      latitude: place.latitude,
-      longitude: place.longitude,
-      arrivalDate: arrivalMs,
-      departureDate: dateToMs(departure),
-      mood,
-    });
-    if (note.trim()) {
-      await addDayNote(entry.id, {
-        dayNumber: 1,
-        title: "Day 1 · arrival",
-        body: note.trim(),
-        date: arrivalMs,
+    try {
+      const arrivalMs = dateToMs(arrival);
+      const entry = await createEntry({
+        cityName: place.cityName,
+        countryISO: place.countryISO3,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        arrivalDate: arrivalMs,
+        departureDate: dateToMs(departure),
+        mood,
       });
+      if (note.trim()) {
+        await addDayNote(entry.id, {
+          dayNumber: 1,
+          title: "Day 1 · arrival",
+          body: note.trim(),
+          date: arrivalMs,
+        });
+      }
+      navigate("/trips", {
+        replace: true,
+        state: { toast: `Entry saved · ${place.cityName}` },
+      });
+    } catch (err) {
+      console.error("Failed to save entry", err);
+      alert(`Couldn't save the entry: ${(err as Error).message ?? err}`);
+      setSaving(false);
     }
-    navigate("/trips", {
-      replace: true,
-      state: { toast: `Entry saved · ${place.cityName}` },
-    });
   }
 
   const mapNote = place

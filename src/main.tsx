@@ -10,7 +10,7 @@ import "@theme/tokens.css";
 import { App } from "./App";
 import { seedProfile } from "@core/db";
 
-seedProfile();
+seedProfile().catch((err) => console.error("seedProfile failed", err));
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
