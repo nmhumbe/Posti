@@ -1,6 +1,6 @@
 import { db, photoBlobs } from "./db";
 import { currentOwnerId, newId } from "./identity";
-import type { JournalEntry, DayNote, Photo } from "./models";
+import type { JournalEntry, DayNote, Photo, CountryVisit, VisitStatus } from "./models";
 import { downscaleImage } from "./services/image";
 
 /**
@@ -71,6 +71,47 @@ export async function updateEntry(
 /** Soft delete — keeps the row for a future sync to propagate the tombstone. */
 export async function deleteEntry(id: string): Promise<void> {
   await db.entries.update(id, { deletedAt: Date.now(), updatedAt: Date.now() });
+}
+
+// ---- Country visits (manual overrides / wishlist / layover) ----------
+
+export function listCountryVisits(): Promise<CountryVisit[]> {
+  return db.countryVisits.toArray().then((xs) => xs.filter(notDeleted));
+}
+
+export function getCountryVisit(iso3: string): Promise<CountryVisit | undefined> {
+  return db.countryVisits
+    .where("countryISO")
+    .equals(iso3.toUpperCase())
+    .toArray()
+    .then((xs) => xs.find(notDeleted));
+}
+
+/** Upsert the manual status for a country; `null` clears it (soft delete). */
+export async function setCountryStatus(
+  iso3: string,
+  status: VisitStatus | null,
+): Promise<void> {
+  const iso = iso3.toUpperCase();
+  const now = Date.now();
+  const existing = await getCountryVisit(iso);
+  if (!status) {
+    if (existing) await db.countryVisits.update(existing.id, { deletedAt: now, updatedAt: now });
+    return;
+  }
+  if (existing) {
+    await db.countryVisits.update(existing.id, { status, updatedAt: now });
+  } else {
+    await db.countryVisits.put({
+      id: newId(),
+      ownerId: currentOwnerId(),
+      countryISO: iso,
+      status,
+      firstVisitDate: status === "visited" ? now : null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
 }
 
 // ---- Photos -----------------------------------------------------------
