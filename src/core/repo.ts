@@ -1,6 +1,13 @@
 import { db, photoBlobs } from "./db";
 import { currentOwnerId, newId } from "./identity";
-import type { JournalEntry, DayNote, Photo, CountryVisit, VisitStatus } from "./models";
+import type {
+  JournalEntry,
+  DayNote,
+  Photo,
+  CountryVisit,
+  VisitStatus,
+  Profile,
+} from "./models";
 import { downscaleImage } from "./services/image";
 
 /**
@@ -12,6 +19,16 @@ import { downscaleImage } from "./services/image";
  */
 
 const notDeleted = <T extends { deletedAt?: number | null }>(x: T) => !x.deletedAt;
+
+// ---- Profile (single local row today) --------------------------------
+
+export function getProfile(): Promise<Profile | undefined> {
+  return db.profiles.get(currentOwnerId());
+}
+
+export async function updateProfile(patch: Partial<Profile>): Promise<void> {
+  await db.profiles.update(currentOwnerId(), { ...patch, updatedAt: Date.now() });
+}
 
 // ---- Journal entries ------------------------------------------------------
 

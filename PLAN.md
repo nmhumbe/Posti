@@ -309,7 +309,7 @@ Swift port:
 |---|---|---|
 | **0. Scaffold** | Vite + React + TS + PWA, 5-tab router shell, `tokens.css` + self-hosted fonts, component vocabulary, Dexie schema, `src/core` models + services (distance, stats, geo), sample-data seed. Real world-map rendering. | **done — build + typecheck green** |
 | **1. Trips / Journal** | `src/core/repo.ts` (CRUD, the Supabase swap point). Compose sheet — place search + geocode (Nominatim), photo picker → blob store + captions, day notes. Trip detail: hero + Photos/Notes toggle. Photo detail route. | not started |
-| **2. Map + stats** | ~~Complete `countries.ts`~~ (done — generated, 249 rows); ~~"By region" bars + visited chips~~ (done); pan/zoom + tap-to-open a country sheet; wire `Profile.mapFill`. | data + stats done; map interaction pending |
+| **2. Map + stats** | ✅ Done — generated country table, region bars + name chips, drag-pan / pinch-zoom / reset, tap-a-country sheet (cities + status toggles), `Profile.mapFill` wired, editable Me settings (name, fill swatches, home airport, miles goal). | done |
 | **3. Miles** | Bundle OpenFlights `airports.csv`; "Add manually" with IATA autocomplete → haversine → cached `distanceMiles`; resolve IATA→country to fold flights into the map. Legs list is live already. | data model + hero + legs done |
 | **4. Passport** | `Stamp` / `VisaStamp` / `PassportSpread` components, page nav, "next stamp" progress, per-continent motifs. | not started |
 | **5. Me + polish** | Badges grid + earned logic, editable settings, JSON export/import, offline-install polish (real PNG icons, apple-touch-icon). | settings + tags render |
