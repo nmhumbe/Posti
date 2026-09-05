@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host",
     "typecheck": "tsc -b --noEmit",
-    "gen:countries": "node scripts/gen-countries.mjs"
+    "gen:countries": "node scripts/gen-countries.mjs",
+    "gen:airports": "node scripts/gen-airports.mjs"
   },
   "dependencies": {
     "@fontsource/caprasimo": "^5.1.0",

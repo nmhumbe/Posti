@@ -7,6 +7,7 @@ import { MilesScreen } from "@ui/screens/MilesScreen";
 import { MeScreen } from "@ui/screens/MeScreen";
 import { ComposeScreen } from "@ui/screens/ComposeScreen";
 import { EntryScreen } from "@ui/screens/EntryScreen";
+import { AddFlightScreen } from "@ui/screens/AddFlightScreen";
 
 const TABS: Array<{ to: string; label: string; icon: ReactNode }> = [
   { to: "/map", label: "Map", icon: <PinIcon /> },
@@ -16,7 +17,7 @@ const TABS: Array<{ to: string; label: string; icon: ReactNode }> = [
   { to: "/me", label: "Me", icon: <PersonIcon /> },
 ];
 
-const FULLSCREEN_PREFIXES = ["/compose", "/entry/"];
+const FULLSCREEN_PREFIXES = ["/compose", "/entry/", "/flights/new"];
 
 export function App() {
   const location = useLocation();
@@ -43,6 +44,7 @@ export function App() {
           <Route path="/me" element={<MeScreen />} />
           <Route path="/compose" element={<ComposeScreen />} />
           <Route path="/entry/:id" element={<EntryScreen />} />
+          <Route path="/flights/new" element={<AddFlightScreen />} />
           <Route path="*" element={<Navigate to="/map" replace />} />
         </Routes>
       </main>

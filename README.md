@@ -8,9 +8,10 @@ core ports to a native iOS app (Expo / React Native) later — see [PLAN.md](PLA
 
 ## Status
 
-Phase 0 scaffold — **`npm run build` and `tsc` pass.** The world map renders real geometry
-(d3 + world-atlas); Trips / Miles / Me are styled and live-bound to the local DB; Passport is
-a stub. Load sample data from the Trips tab to see the map and stats populate.
+**`npm run build` and `tsc` pass.** Map, Trips (+ entry detail: photos, day notes), Miles
+(add a flight, real distances), and Me (editable settings) all work end to end against the
+local DB. Passport is still a stub. Load sample data from the Trips tab to see the map and
+stats populate quickly, or add a real entry via **+ New entry**.
 
 ## Run it
 
@@ -46,8 +47,17 @@ Local-first via IndexedDB (Dexie). No account, works offline. Multi-user later =
 adapter behind `src/core/repo.ts`; every row already carries `ownerId` + timestamps + soft
 delete for sync.
 
+## Generated data
+
+`src/core/data/countries.ts` and `airports.json` are generated, not hand-edited:
+
+```sh
+npm run gen:countries   # from the world-countries package
+npm run gen:airports    # from OpenFlights (fetches + caches scripts/.cache/airports.dat)
+```
+
 ## To add
 
 - Real PNG app icons + `apple-touch-icon.png` in `public/` (SVG works for dev)
-- `src/core/data/airports.csv` (OpenFlights) for the Miles tab
-- Complete `src/core/data/countries.ts` to all 193 UN members
+- Passport tab (currently a stub)
+- Automated tests (Vitest over `src/core/` is the natural first step)

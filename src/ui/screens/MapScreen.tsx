@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useNavigate } from "react-router-dom";
 import { db } from "@core/db";
-import { listEntries, listCountryVisits, setCountryStatus } from "@core/repo";
+import { listEntries, listCountryVisits, listFlights, setCountryStatus } from "@core/repo";
 import { computeWorldStats } from "@core/services/stats";
 import {
   loadWorldFeatures,
@@ -11,7 +11,7 @@ import {
   countryByNumeric,
   type WorldFeature,
 } from "@core/services/geo";
-import { MAP_FILL_HEX, type JournalEntry, type VisitStatus } from "@core/models";
+import { MAP_FILL_HEX, type JournalEntry, type VisitStatus, type CountryVisit } from "@core/models";
 import { Screen, Card, StatTile, RegionBar, Tag } from "@ui/components";
 import { usePanZoom } from "@ui/usePanZoom";
 
@@ -27,10 +27,11 @@ export function MapScreen() {
   const navigate = useNavigate();
   const entries = useLiveQuery(listEntries, [], []);
   const visits = useLiveQuery(listCountryVisits, [], []);
+  const flights = useLiveQuery(listFlights, [], []);
   const profile = useLiveQuery(() => db.profiles.toArray(), [], []);
   const fill = MAP_FILL_HEX[profile[0]?.mapFill ?? "terracotta"];
 
-  const stats = useMemo(() => computeWorldStats(entries, [], visits), [entries, visits]);
+  const stats = useMemo(() => computeWorldStats(entries, flights, visits), [entries, flights, visits]);
 
   const visitedNumeric = useMemo(() => {
     const s = new Set<string>();
@@ -41,15 +42,8 @@ export function MapScreen() {
     return s;
   }, [stats.visitedISO3]);
 
-  const wishlistNumeric = useMemo(() => {
-    const s = new Set<string>();
-    for (const v of visits) {
-      if (v.status !== "wishlist") continue;
-      const n = numericForISO3(v.countryISO);
-      if (n) s.add(n);
-    }
-    return s;
-  }, [visits]);
+  const wishlistNumeric = useMemo(() => numericSetForStatus(visits, "wishlist"), [visits]);
+  const layoverNumeric = useMemo(() => numericSetForStatus(visits, "layover"), [visits]);
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(360);
@@ -146,7 +140,9 @@ export function MapScreen() {
                     ? fill
                     : wishlistNumeric.has(p.id)
                       ? "var(--color-accent-2-300)"
-                      : "var(--color-neutral-300)"
+                      : layoverNumeric.has(p.id)
+                        ? "var(--color-neutral-400)"
+                        : "var(--color-neutral-300)"
                 }
                 stroke="var(--color-bg)"
                 strokeWidth={0.5}
@@ -375,6 +371,16 @@ function CountrySheet({
       </div>
     </div>
   );
+}
+
+function numericSetForStatus(visits: CountryVisit[], status: VisitStatus): Set<string> {
+  const s = new Set<string>();
+  for (const v of visits) {
+    if (v.status !== status) continue;
+    const n = numericForISO3(v.countryISO);
+    if (n) s.add(n);
+  }
+  return s;
 }
 
 function fmtMiles(m: number): string {

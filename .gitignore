@@ -12,6 +12,7 @@ dist-ssr/
 .vite/
 coverage/
 *.tsbuildinfo
+scripts/.cache/
 
 # env
 .env

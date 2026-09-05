@@ -7,6 +7,7 @@ import type {
   CountryVisit,
   VisitStatus,
   Profile,
+  Flight,
 } from "./models";
 import { downscaleImage } from "./services/image";
 
@@ -262,4 +263,65 @@ export async function moveDayNote(
   const now = Date.now();
   await db.dayNotes.update(notes[i].id, { orderIndex: j, updatedAt: now });
   await db.dayNotes.update(notes[j].id, { orderIndex: i, updatedAt: now });
+}
+
+// ---- Flights ------------------------------------------------------------
+
+export function listFlights(): Promise<Flight[]> {
+  return db.flights
+    .toArray()
+    .then((xs) => xs.filter(notDeleted).sort((a, b) => (b.date ?? b.createdAt) - (a.date ?? a.createdAt)));
+}
+
+export interface NewFlightInput {
+  originIATA: string;
+  destIATA: string;
+  distanceMiles: number;
+  date?: number | null;
+  airline?: string | null;
+  flightNumber?: string | null;
+  /** ISO3 of each endpoint, if resolved — used to softly mark the map. */
+  originISO3?: string;
+  destISO3?: string;
+}
+
+export async function createFlight(input: NewFlightInput): Promise<Flight> {
+  const now = Date.now();
+  const flight: Flight = {
+    id: newId(),
+    ownerId: currentOwnerId(),
+    originIATA: input.originIATA.toUpperCase(),
+    destIATA: input.destIATA.toUpperCase(),
+    date: input.date ?? null,
+    airline: input.airline ?? null,
+    flightNumber: input.flightNumber ?? null,
+    distanceMiles: Math.round(input.distanceMiles),
+    createdAt: now,
+    updatedAt: now,
+  };
+  await db.flights.put(flight);
+  await markFlightCountries(input.originISO3, input.destISO3);
+  return flight;
+}
+
+export async function deleteFlight(id: string): Promise<void> {
+  await db.flights.update(id, { deletedAt: Date.now(), updatedAt: Date.now() });
+}
+
+async function hasEntryForCountry(iso3: string): Promise<boolean> {
+  const rows = await db.entries.where("countryISO").equalsIgnoreCase(iso3).toArray();
+  return rows.some(notDeleted);
+}
+
+/**
+ * A flight touching a country you haven't logged a city in or marked yet gets
+ * a soft "layover" mark, so it shows on the map without overclaiming a real
+ * visit (journal entries remain the authority for "visited").
+ */
+async function markFlightCountries(originISO3?: string, destISO3?: string): Promise<void> {
+  const isos = new Set([originISO3, destISO3].filter((x): x is string => !!x));
+  for (const iso of isos) {
+    const [visit, hasEntry] = await Promise.all([getCountryVisit(iso), hasEntryForCountry(iso)]);
+    if (!visit && !hasEntry) await setCountryStatus(iso, "layover");
+  }
 }

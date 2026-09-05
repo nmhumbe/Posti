@@ -24,12 +24,13 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // world-atlas topojson is large + immutable — cache it hard.
+        // world-atlas topojson + the bundled airport directory are large and
+        // immutable per build — cache them hard.
         runtimeCaching: [
           {
-            urlPattern: /world-atlas|countries-110m/,
+            urlPattern: /world-atlas|countries-110m|airports/,
             handler: "CacheFirst",
-            options: { cacheName: "geo", expiration: { maxEntries: 4 } },
+            options: { cacheName: "geo", expiration: { maxEntries: 8 } },
           },
         ],
       },
